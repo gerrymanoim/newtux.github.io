@@ -11,5 +11,6 @@ Quick List of Recommended Coffee Roasters NYC:
 
 - Blue bottle
 - Everyman espresso (which serves counter culture)
-- Joe New York (http://www.joenewyork.com/locations/union-square/)
-- Budin - Scandinavian coffee roaster (http://www.budin-nyc.com/)
+- [Joe New York](http://www.joenewyork.com/locations/union-square/)
+- [Budin](http://www.budin-nyc.com/) - Scandinavian coffee roaster 
+- Puerto Rico Importing Company
