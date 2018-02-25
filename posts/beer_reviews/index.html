@@ -1,0 +1,1242 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+    <title>An R Anlysis of the Beer Advocate Dataset</title>
+    <link rel="stylesheet" href="https://unpkg.com/purecss@0.6.2/build/pure-min.css" integrity="sha384-UQiGfs9ICog+LwheBSRCt1o5cbyKIHbwjWscjemyBMT9YCUMZffs6UqUTd0hObXD" crossorigin="anonymous">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    
+    
+    <meta name="generator" content="Hugo 0.33" />
+    
+    
+    
+      <link rel="stylesheet" href="https://unpkg.com/purecss@0.6.2/build/grids-responsive-min.css">
+    
+    
+    <link rel="stylesheet" href="http://newtux.github.io/css/plain-blog.css">
+</head>
+<body>
+<div class="pure-g">
+  <div class="pure-u-1" id="header">
+    <a href="http://newtux.github.io/">Off-Hours</a>
+    
+    
+  </div>
+</div>
+<div class="pure-g">
+  <div class="pure-u-1-24 pure-u-lg-1-12 pure-u-xl-1-5"></div>
+  <div class="pure-u-11-12 pure-u-lg-5-6 pure-u-xl-3-5" id="main">
+  	<main>
+  	  <header>
+  	    <h1>An R Anlysis of the Beer Advocate Dataset</h1>
+        <time datetime="2018-02-25T14:35:56-05:00" class="post-list timeago">2018-02-25</time>
+        
+
+
+
+
+
+
+
+  	  </header>
+
+  	  
+
+
+      
+
+  	  
+        <p>Inspired by the LinkedIn post <a href="https://www.linkedin.com/pulse/how-hire-test-data-skills-one-size-fits-all-interview-tanya-cashorali/" class="uri">https://www.linkedin.com/pulse/how-hire-test-data-skills-one-size-fits-all-interview-tanya-cashorali/</a>, my attempt to explore the dataset and see what’s there.</p>
+<div id="questions" class="section level1">
+<h1>Questions:</h1>
+<ol style="list-style-type: decimal">
+<li><a href="#q1">Which brewery produces the strongest beers by ABV%?</a></li>
+<li><a href="#q2">If you had to pick 3 beers to recommend using only this data, which would you pick?</a></li>
+<li><a href="#q3">Which of the factors (aroma, taste, appearance, palette) are most important in determining the overall quality of a beer?</a></li>
+<li><a href="#q4">Lastly, if I typically enjoy a beer due to its aroma and appearance, which beer style should I try?</a></li>
+</ol>
+</div>
+<div id="set-up" class="section level1">
+<h1>Set up</h1>
+<pre class="r"><code>library(tidyverse)</code></pre>
+<pre><code>## Loading tidyverse: ggplot2
+## Loading tidyverse: tibble
+## Loading tidyverse: tidyr
+## Loading tidyverse: readr
+## Loading tidyverse: purrr
+## Loading tidyverse: dplyr</code></pre>
+<pre><code>## Conflicts with tidy packages ----------------------------------------------</code></pre>
+<pre><code>## filter(): dplyr, stats
+## lag():    dplyr, stats</code></pre>
+<pre class="r"><code>library(pander) # to display tables
+panderOptions(&quot;table.split.table&quot;, Inf)</code></pre>
+<pre class="r"><code>beer_reviews&lt;- read_csv(&quot;~/dev/beer_reviews/beer_reviews.csv&quot;)</code></pre>
+<pre><code>## Parsed with column specification:
+## cols(
+##   brewery_id = col_integer(),
+##   brewery_name = col_character(),
+##   review_time = col_integer(),
+##   review_overall = col_double(),
+##   review_aroma = col_double(),
+##   review_appearance = col_double(),
+##   review_profilename = col_character(),
+##   beer_style = col_character(),
+##   review_palate = col_double(),
+##   review_taste = col_double(),
+##   beer_name = col_character(),
+##   beer_abv = col_double(),
+##   beer_beerid = col_integer()
+## )</code></pre>
+<p>To make my life easier, I’m also making a lookup table (i.e. given a beer id, pull out beer info). We could make it a list for proper lookups (i.e. <code>beer_lookup[[some_id]]</code>), but there’s enough overhead to running nest/list that it isn’t worth it here. Maybe an examination in a future post.</p>
+<pre class="r"><code>beer_lookup &lt;- beer_reviews %&gt;% 
+  distinct(beer_beerid, beer_name, beer_abv, beer_style, brewery_name, brewery_id)</code></pre>
+</div>
+<div id="orientation" class="section level1">
+<h1>Orientation</h1>
+<p>Just looking at the names, the column specification seems reasonable, but let’s start by glimpsing just to eyeball them.</p>
+<pre class="r"><code>glimpse(beer_reviews)</code></pre>
+<pre><code>## Observations: 1,586,614
+## Variables: 13
+## $ brewery_id         &lt;int&gt; 10325, 10325, 10325, 10325, 1075, 1075, 107...
+## $ brewery_name       &lt;chr&gt; &quot;Vecchio Birraio&quot;, &quot;Vecchio Birraio&quot;, &quot;Vecc...
+## $ review_time        &lt;int&gt; 1234817823, 1235915097, 1235916604, 1234725...
+## $ review_overall     &lt;dbl&gt; 1.5, 3.0, 3.0, 3.0, 4.0, 3.0, 3.5, 3.0, 4.0...
+## $ review_aroma       &lt;dbl&gt; 2.0, 2.5, 2.5, 3.0, 4.5, 3.5, 3.5, 2.5, 3.0...
+## $ review_appearance  &lt;dbl&gt; 2.5, 3.0, 3.0, 3.5, 4.0, 3.5, 3.5, 3.5, 3.5...
+## $ review_profilename &lt;chr&gt; &quot;stcules&quot;, &quot;stcules&quot;, &quot;stcules&quot;, &quot;stcules&quot;,...
+## $ beer_style         &lt;chr&gt; &quot;Hefeweizen&quot;, &quot;English Strong Ale&quot;, &quot;Foreig...
+## $ review_palate      &lt;dbl&gt; 1.5, 3.0, 3.0, 2.5, 4.0, 3.0, 4.0, 2.0, 3.5...
+## $ review_taste       &lt;dbl&gt; 1.5, 3.0, 3.0, 3.0, 4.5, 3.5, 4.0, 3.5, 4.0...
+## $ beer_name          &lt;chr&gt; &quot;Sausa Weizen&quot;, &quot;Red Moon&quot;, &quot;Black Horse Bl...
+## $ beer_abv           &lt;dbl&gt; 5.0, 6.2, 6.5, 5.0, 7.7, 4.7, 4.7, 4.7, 4.7...
+## $ beer_beerid        &lt;int&gt; 47986, 48213, 48215, 47969, 64883, 52159, 5...</code></pre>
+<p>Let’s make sure that these values are all make sense, so we can actually summarise it.</p>
+<div id="rating-distributions" class="section level2">
+<h2>Rating Distributions</h2>
+<pre class="r"><code>beer_reviews %&gt;% 
+  select(starts_with(&quot;review_&quot;)) %&gt;% 
+  summarise_if(is.numeric, funs(mean, median))</code></pre>
+<pre><code>## # A tibble: 1 x 12
+##   review_time_mean review_overall_mean review_aroma_mean
+##              &lt;dbl&gt;               &lt;dbl&gt;             &lt;dbl&gt;
+## 1       1224089280            3.815581          3.735636
+## # ... with 9 more variables: review_appearance_mean &lt;dbl&gt;,
+## #   review_palate_mean &lt;dbl&gt;, review_taste_mean &lt;dbl&gt;,
+## #   review_time_median &lt;dbl&gt;, review_overall_median &lt;dbl&gt;,
+## #   review_aroma_median &lt;dbl&gt;, review_appearance_median &lt;dbl&gt;,
+## #   review_palate_median &lt;dbl&gt;, review_taste_median &lt;dbl&gt;</code></pre>
+<p>So the most common review is really a 4.</p>
+<p>A facet by all the <code>review_*</code> columns.</p>
+<pre class="r"><code>ratings &lt;- beer_reviews %&gt;% 
+  select(-review_profilename, -review_time) %&gt;% 
+  gather(rating_type, rating, starts_with(&quot;review_&quot;))</code></pre>
+<p>We could precompute this to make the render faster if we really cared.</p>
+<pre class="r"><code>ggplot(ratings, aes(rating, fill=rating_type)) +
+  geom_histogram(binwidth = 0.25, position=&quot;dodge&quot;) #I like the spacing this enforces </code></pre>
+<p><img src="/posts/beer_reviews_files/figure-html/unnamed-chunk-5-1.png" width="672" /></p>
+</div>
+</div>
+<div id="q1" class="section level1">
+<h1>Question 1: Which brewery produces the strongest beers by ABV%?</h1>
+<p>The answer to this question depends on your interpretation of it. Are we looking for the breweries that make the beers that are the strongest? Or is it which breweries generally make the strongest beers? We will answer both.</p>
+<div id="strongest-beer" class="section level2">
+<h2>Strongest Beer</h2>
+<p>First - does the <code>beer_beerid</code> actually have unique beer &lt;-&gt; abv pairings, or does one <code>beer_beerid</code> have multiple abvs?</p>
+<pre class="r"><code>beer_reviews %&gt;% 
+  count(beer_beerid, beer_abv) %&gt;% 
+  count(beer_beerid) %&gt;% 
+  filter(nn&gt;1)</code></pre>
+<pre><code>## # A tibble: 0 x 2
+## # ... with 2 variables: beer_beerid &lt;int&gt;, nn &lt;int&gt;</code></pre>
+<p>That’s an encouranging sign. Now we can do some analysis.</p>
+<p>The “simple” answer, which are the strongest beers?</p>
+<pre class="r"><code>beer_reviews %&gt;% 
+  distinct(beer_beerid, brewery_name, beer_name, beer_abv) %&gt;% 
+  arrange(desc(beer_abv)) %&gt;% 
+  head(20) %&gt;% 
+  pander</code></pre>
+<table>
+<colgroup>
+<col width="36%" />
+<col width="36%" />
+<col width="12%" />
+<col width="14%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th align="center">brewery_name</th>
+<th align="center">beer_name</th>
+<th align="center">beer_abv</th>
+<th align="center">beer_beerid</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td align="center">Schorschbräu</td>
+<td align="center">Schorschbräu Schorschbock 57%</td>
+<td align="center">57.7</td>
+<td align="center">73368</td>
+</tr>
+<tr class="even">
+<td align="center">Schorschbräu</td>
+<td align="center">Schorschbräu Schorschbock 43%</td>
+<td align="center">43</td>
+<td align="center">57856</td>
+</tr>
+<tr class="odd">
+<td align="center">BrewDog</td>
+<td align="center">Sink The Bismarck!</td>
+<td align="center">41</td>
+<td align="center">57015</td>
+</tr>
+<tr class="even">
+<td align="center">Schorschbräu</td>
+<td align="center">Schorschbräu Schorschbock 40%</td>
+<td align="center">39.44</td>
+<td align="center">55712</td>
+</tr>
+<tr class="odd">
+<td align="center">De Struise Brouwers</td>
+<td align="center">Black Damnation VI - Messy</td>
+<td align="center">39</td>
+<td align="center">70633</td>
+</tr>
+<tr class="even">
+<td align="center">BrewDog</td>
+<td align="center">Tactical Nuclear Penguin</td>
+<td align="center">32</td>
+<td align="center">54571</td>
+</tr>
+<tr class="odd">
+<td align="center">Schorschbräu</td>
+<td align="center">Schorschbräu Schorschbock 31%</td>
+<td align="center">30.86</td>
+<td align="center">51466</td>
+</tr>
+<tr class="even">
+<td align="center">Hair of the Dog Brewing Company / Brewery and Tasting Room</td>
+<td align="center">Dave</td>
+<td align="center">29</td>
+<td align="center">35197</td>
+</tr>
+<tr class="odd">
+<td align="center">BrewDog</td>
+<td align="center">Ghost Deer</td>
+<td align="center">28</td>
+<td align="center">74021</td>
+</tr>
+<tr class="even">
+<td align="center">Boston Beer Company (Samuel Adams)</td>
+<td align="center">Samuel Adams Utopias</td>
+<td align="center">27</td>
+<td align="center">25759</td>
+</tr>
+<tr class="odd">
+<td align="center">De Struise Brouwers</td>
+<td align="center">Black Damnation V - Double Black</td>
+<td align="center">26</td>
+<td align="center">56776</td>
+</tr>
+<tr class="even">
+<td align="center">Boston Beer Company (Samuel Adams)</td>
+<td align="center">Samuel Adams Utopias MMIII</td>
+<td align="center">25</td>
+<td align="center">9840</td>
+</tr>
+<tr class="odd">
+<td align="center">Boston Beer Company (Samuel Adams)</td>
+<td align="center">Samuel Adams Utopias (Aged On Cocoa Nibs)</td>
+<td align="center">25</td>
+<td align="center">41120</td>
+</tr>
+<tr class="even">
+<td align="center">Boston Beer Company (Samuel Adams)</td>
+<td align="center">Samuel Adams Utopias MMII</td>
+<td align="center">24</td>
+<td align="center">2683</td>
+</tr>
+<tr class="odd">
+<td align="center">LagerHaus Grill &amp; Brewery</td>
+<td align="center">44 Magnum</td>
+<td align="center">22</td>
+<td align="center">59755</td>
+</tr>
+<tr class="even">
+<td align="center">De Struise Brouwers</td>
+<td align="center">Black Damnation XI - Special Kay</td>
+<td align="center">22</td>
+<td align="center">44605</td>
+</tr>
+<tr class="odd">
+<td align="center">DuClaw Brewing Company</td>
+<td align="center">Colossus</td>
+<td align="center">21.92</td>
+<td align="center">48881</td>
+</tr>
+<tr class="even">
+<td align="center">Boston Beer Company (Samuel Adams)</td>
+<td align="center">Samuel Adams Millennium</td>
+<td align="center">21</td>
+<td align="center">1640</td>
+</tr>
+<tr class="odd">
+<td align="center">Short’s Brewing Company</td>
+<td align="center">Short’s Anniversary Ale 2006</td>
+<td align="center">20</td>
+<td align="center">35420</td>
+</tr>
+<tr class="even">
+<td align="center">Grand Lake Brewing Company</td>
+<td align="center">Holy Grail</td>
+<td align="center">20</td>
+<td align="center">40351</td>
+</tr>
+</tbody>
+</table>
+<p>That is strong beer<a href="#fn1" class="footnoteRef" id="fnref1"><sup>1</sup></a>! But to some extent, what I’m really curious about is what is the strongest “common” beer. Defining “common” is a bit handwavey, but let’s come up with a well reasoned way anyway.</p>
+<p>We can use the number of reviews as a proxy for how avaliable a beer is (though there’s some bias here - are you more likely to review a beer if it is rarer?). We should make sure to only grab one review per user per beer <a href="#fn2" class="footnoteRef" id="fnref2"><sup>2</sup></a>.</p>
+<pre class="r"><code>review_tally &lt;- beer_reviews %&gt;% 
+  distinct(beer_beerid, review_profilename) %&gt;% 
+  group_by(beer_beerid) %&gt;% 
+  tally()
+summary(review_tally$n)</code></pre>
+<pre><code>##    Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
+##     1.0     1.0     2.0    23.8     7.0  3207.0</code></pre>
+<p>Or graphically:</p>
+<pre class="r"><code>ggplot(review_tally, aes(n))+geom_histogram(binwidth = 10)</code></pre>
+<p><img src="/posts/beer_reviews_files/figure-html/unnamed-chunk-9-1.png" width="672" /> So there’s a crazy amount of single digit reviews. Which is unexpected to me at least? And a wide tail <a href="#fn3" class="footnoteRef" id="fnref3"><sup>3</sup></a>. So let’s filter to say a minimum of say 100 reviews. You could argue for all sorts or reasonable cutoff values here.</p>
+<pre class="r"><code>n_reviews_cutoff &lt;- 100
+ggplot(review_tally %&gt;% filter(n&gt;n_reviews_cutoff), aes(n))+geom_histogram(binwidth = 10)</code></pre>
+<p><img src="/posts/beer_reviews_files/figure-html/unnamed-chunk-10-1.png" width="672" /></p>
+<pre class="r"><code># We could instead do a join here, but this reads a bit easier and our dataset is small
+common_beers &lt;- review_tally %&gt;% filter(n&gt;n_reviews_cutoff)
+beer_reviews %&gt;% 
+  filter(beer_beerid %in% common_beers$beer_beerid) %&gt;% 
+  distinct(beer_beerid, brewery_name, beer_name, beer_abv) %&gt;% 
+  arrange(desc(beer_abv)) %&gt;% 
+  head(20) %&gt;% 
+  pander</code></pre>
+<table>
+<colgroup>
+<col width="35%" />
+<col width="37%" />
+<col width="12%" />
+<col width="14%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th align="center">brewery_name</th>
+<th align="center">beer_name</th>
+<th align="center">beer_abv</th>
+<th align="center">beer_beerid</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td align="center">Boston Beer Company (Samuel Adams)</td>
+<td align="center">Samuel Adams Utopias</td>
+<td align="center">27</td>
+<td align="center">25759</td>
+</tr>
+<tr class="even">
+<td align="center">The Bruery</td>
+<td align="center">Chocolate Rain</td>
+<td align="center">18.5</td>
+<td align="center">53728</td>
+</tr>
+<tr class="odd">
+<td align="center">The Bruery</td>
+<td align="center">Black Tuesday</td>
+<td align="center">18.2</td>
+<td align="center">51257</td>
+</tr>
+<tr class="even">
+<td align="center">BrewDog</td>
+<td align="center">Tokyo*</td>
+<td align="center">18.2</td>
+<td align="center">52204</td>
+</tr>
+<tr class="odd">
+<td align="center">Dogfish Head Brewery</td>
+<td align="center">Raison D’extra</td>
+<td align="center">18</td>
+<td align="center">3089</td>
+</tr>
+<tr class="even">
+<td align="center">Dogfish Head Brewery</td>
+<td align="center">120 Minute IPA</td>
+<td align="center">18</td>
+<td align="center">9086</td>
+</tr>
+<tr class="odd">
+<td align="center">Dogfish Head Brewery</td>
+<td align="center">Fort</td>
+<td align="center">18</td>
+<td align="center">21466</td>
+</tr>
+<tr class="even">
+<td align="center">Dogfish Head Brewery</td>
+<td align="center">World Wide Stout</td>
+<td align="center">18</td>
+<td align="center">2392</td>
+</tr>
+<tr class="odd">
+<td align="center">Boston Beer Company (Samuel Adams)</td>
+<td align="center">Samuel Adams Triple Bock</td>
+<td align="center">17.5</td>
+<td align="center">111</td>
+</tr>
+<tr class="even">
+<td align="center">Nøgne Ø - Det Kompromissløse Bryggeri A/S</td>
+<td align="center">Dark Horizon 2nd Edition</td>
+<td align="center">17.5</td>
+<td align="center">46410</td>
+</tr>
+<tr class="odd">
+<td align="center">Mikkeller ApS</td>
+<td align="center">Black (黑)</td>
+<td align="center">17.5</td>
+<td align="center">41092</td>
+</tr>
+<tr class="even">
+<td align="center">Avery Brewing Company</td>
+<td align="center">The Beast Grand Cru</td>
+<td align="center">16.83</td>
+<td align="center">15619</td>
+</tr>
+<tr class="odd">
+<td align="center">Avery Brewing Company</td>
+<td align="center">Mephistopheles’ Stout</td>
+<td align="center">16.8</td>
+<td align="center">28204</td>
+</tr>
+<tr class="even">
+<td align="center">Avery Brewing Company</td>
+<td align="center">Samael’s Ale</td>
+<td align="center">16.45</td>
+<td align="center">24357</td>
+</tr>
+<tr class="odd">
+<td align="center">Nøgne Ø - Det Kompromissløse Bryggeri A/S</td>
+<td align="center">Dark Horizon 1st Edition</td>
+<td align="center">16</td>
+<td align="center">37294</td>
+</tr>
+<tr class="even">
+<td align="center">The Bruery</td>
+<td align="center">Melange No. 3</td>
+<td align="center">15.5</td>
+<td align="center">47954</td>
+</tr>
+<tr class="odd">
+<td align="center">Dogfish Head Brewery</td>
+<td align="center">Olde School Barleywine</td>
+<td align="center">15.04</td>
+<td align="center">6533</td>
+</tr>
+<tr class="even">
+<td align="center">Dark Horse Brewing Company</td>
+<td align="center">Three Guy Off The Scale Barley Wine</td>
+<td align="center">15</td>
+<td align="center">47506</td>
+</tr>
+<tr class="odd">
+<td align="center">Three Floyds Brewing Co. &amp; Brewpub</td>
+<td align="center">Alpha Kong</td>
+<td align="center">15</td>
+<td align="center">22493</td>
+</tr>
+<tr class="even">
+<td align="center">Three Floyds Brewing Co. &amp; Brewpub</td>
+<td align="center">Dark Lord Imperial Stout</td>
+<td align="center">15</td>
+<td align="center">7520</td>
+</tr>
+</tbody>
+</table>
+<p>Now I at least recognize some of these beers. Again - you can play around with <code>n</code> here until you are satisfied.</p>
+</div>
+<div id="strongest-brewery" class="section level2">
+<h2>Strongest Brewery</h2>
+<p>Which brewery makes the strongest beers on average?</p>
+<pre class="r"><code>beer_reviews %&gt;% 
+  distinct(beer_beerid, brewery_name, beer_name, beer_abv) %&gt;%
+  group_by(brewery_name) %&gt;% 
+  summarise(AvgABV=mean(beer_abv,na.rm=TRUE)) %&gt;% 
+  arrange(desc(AvgABV)) %&gt;% 
+  head(20) %&gt;% 
+  pander</code></pre>
+<table style="width:54%;">
+<colgroup>
+<col width="43%" />
+<col width="11%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th align="center">brewery_name</th>
+<th align="center">AvgABV</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td align="center">Schorschbräu</td>
+<td align="center">24.69</td>
+</tr>
+<tr class="even">
+<td align="center">Shoes Brewery</td>
+<td align="center">15.2</td>
+</tr>
+<tr class="odd">
+<td align="center">Rome Brewing Company</td>
+<td align="center">14.2</td>
+</tr>
+<tr class="even">
+<td align="center">Hurlimann Brewery</td>
+<td align="center">13.5</td>
+</tr>
+<tr class="odd">
+<td align="center">Alt-Oberurseler Brauhaus</td>
+<td align="center">13.2</td>
+</tr>
+<tr class="even">
+<td align="center">Rascal Creek Brewing Co.</td>
+<td align="center">13</td>
+</tr>
+<tr class="odd">
+<td align="center">Monks Porter House</td>
+<td align="center">12.47</td>
+</tr>
+<tr class="even">
+<td align="center">Morgan Street Brewery</td>
+<td align="center">12</td>
+</tr>
+<tr class="odd">
+<td align="center">Rinkukių Aluas Darykla</td>
+<td align="center">12</td>
+</tr>
+<tr class="even">
+<td align="center">Snowy Mountain Brewery</td>
+<td align="center">12</td>
+</tr>
+<tr class="odd">
+<td align="center">United Brands Company</td>
+<td align="center">12</td>
+</tr>
+<tr class="even">
+<td align="center">Etna Brewery</td>
+<td align="center">11.5</td>
+</tr>
+<tr class="odd">
+<td align="center">Nasu Kogen Beer Co. Ltd.</td>
+<td align="center">11.5</td>
+</tr>
+<tr class="even">
+<td align="center">Steam Plant Grill</td>
+<td align="center">11.07</td>
+</tr>
+<tr class="odd">
+<td align="center">Slippery Pig Brewing</td>
+<td align="center">11</td>
+</tr>
+<tr class="even">
+<td align="center">Water Street Brewing &amp; Ale House</td>
+<td align="center">11</td>
+</tr>
+<tr class="odd">
+<td align="center">Wibblers</td>
+<td align="center">11</td>
+</tr>
+<tr class="even">
+<td align="center">Zago S.r.l.</td>
+<td align="center">11</td>
+</tr>
+<tr class="odd">
+<td align="center">Dusters Restaurant and The Gottberg Brew Pub</td>
+<td align="center">10.8</td>
+</tr>
+<tr class="even">
+<td align="center">Brasserie Dubuisson Frères sprl</td>
+<td align="center">10.61</td>
+</tr>
+</tbody>
+</table>
+<p>But, as before, let’s filter to just the common beers:</p>
+<pre class="r"><code>beer_reviews %&gt;% 
+  distinct(beer_beerid, brewery_name, beer_name, beer_abv) %&gt;%
+  filter(beer_beerid %in% common_beers$beer_beerid) %&gt;% 
+  group_by(brewery_name) %&gt;% 
+  summarise(AvgABV=mean(beer_abv,na.rm=TRUE)) %&gt;% 
+  arrange(desc(AvgABV)) %&gt;% 
+  head(20) %&gt;% 
+  pander</code></pre>
+<table style="width:54%;">
+<colgroup>
+<col width="43%" />
+<col width="11%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th align="center">brewery_name</th>
+<th align="center">AvgABV</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td align="center">Brasserie Grain d’ Orge (Brasserie Jeanne d’Arc SA)</td>
+<td align="center">13</td>
+</tr>
+<tr class="even">
+<td align="center">Kuhnhenn Brewing Company</td>
+<td align="center">12.8</td>
+</tr>
+<tr class="odd">
+<td align="center">Thomas Creek Brewery</td>
+<td align="center">12.5</td>
+</tr>
+<tr class="even">
+<td align="center">Brasserie Dubuisson Frères sprl</td>
+<td align="center">12</td>
+</tr>
+<tr class="odd">
+<td align="center">O’Hanlon’s Brewing Co. Ltd.</td>
+<td align="center">11.9</td>
+</tr>
+<tr class="even">
+<td align="center">Allentown Brew Works</td>
+<td align="center">11.5</td>
+</tr>
+<tr class="odd">
+<td align="center">East End Brewing Company</td>
+<td align="center">11.5</td>
+</tr>
+<tr class="even">
+<td align="center">Brauerei Schloss Eggenberg</td>
+<td align="center">11.18</td>
+</tr>
+<tr class="odd">
+<td align="center">BFM Brasserie Des Franches-Montagnes</td>
+<td align="center">11</td>
+</tr>
+<tr class="even">
+<td align="center">Brouwerij De Landtsheer NV</td>
+<td align="center">11</td>
+</tr>
+<tr class="odd">
+<td align="center">J.W. Lees &amp; Co (Brewers) Ltd</td>
+<td align="center">10.83</td>
+</tr>
+<tr class="even">
+<td align="center">Brouwerij De Molen</td>
+<td align="center">10.6</td>
+</tr>
+<tr class="odd">
+<td align="center">Voodoo Brewing Company</td>
+<td align="center">10.54</td>
+</tr>
+<tr class="even">
+<td align="center">Picobrouwerij Alvinne / Den Bierzolder</td>
+<td align="center">10.5</td>
+</tr>
+<tr class="odd">
+<td align="center">The Bruery</td>
+<td align="center">10.25</td>
+</tr>
+<tr class="even">
+<td align="center">De Struise Brouwers</td>
+<td align="center">10.18</td>
+</tr>
+<tr class="odd">
+<td align="center">Beer Valley Brewing Co.</td>
+<td align="center">10</td>
+</tr>
+<tr class="even">
+<td align="center">Boak Beverage</td>
+<td align="center">10</td>
+</tr>
+<tr class="odd">
+<td align="center">Bootlegger’s Brewery</td>
+<td align="center">10</td>
+</tr>
+<tr class="even">
+<td align="center">Pisgah Brewing Co.</td>
+<td align="center">9.767</td>
+</tr>
+</tbody>
+</table>
+<p>Cool. But with all this filtering, we are judging some of these breweries by just a beer or two that end up surviving the filtering. So let’s restrict ourselves to both common beers and breweries that make enough of those common beers.</p>
+<pre class="r"><code>beer_reviews %&gt;% 
+  distinct(beer_beerid, brewery_name, beer_name, beer_abv) %&gt;%
+  filter(beer_beerid %in% common_beers$beer_beerid) %&gt;% 
+  group_by(brewery_name) %&gt;% 
+  tally() %&gt;% 
+  summary</code></pre>
+<pre><code>##  brewery_name             n         
+##  Length:565         Min.   : 1.000  
+##  Class :character   1st Qu.: 1.000  
+##  Mode  :character   Median : 2.000  
+##                     Mean   : 5.425  
+##                     3rd Qu.: 6.000  
+##                     Max.   :68.000</code></pre>
+<p>So let’s restrict to just the the breweries with more than the average amount of common beers.</p>
+<pre class="r"><code>beer_reviews %&gt;% 
+  distinct(beer_beerid, brewery_name, beer_name, beer_abv) %&gt;%
+  filter(beer_beerid %in% common_beers$beer_beerid) %&gt;%
+  group_by(brewery_name) %&gt;% 
+  add_tally() %&gt;% 
+  filter(n&gt;5) %&gt;% 
+  summarise(AvgABV=mean(beer_abv,na.rm=TRUE)) %&gt;% 
+  arrange(desc(AvgABV)) %&gt;% 
+  head(20) %&gt;% 
+  pander</code></pre>
+<table style="width:56%;">
+<colgroup>
+<col width="44%" />
+<col width="11%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th align="center">brewery_name</th>
+<th align="center">AvgABV</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td align="center">J.W. Lees &amp; Co (Brewers) Ltd</td>
+<td align="center">10.83</td>
+</tr>
+<tr class="even">
+<td align="center">The Bruery</td>
+<td align="center">10.25</td>
+</tr>
+<tr class="odd">
+<td align="center">De Struise Brouwers</td>
+<td align="center">10.18</td>
+</tr>
+<tr class="even">
+<td align="center">Brouwerij De Dolle Brouwers</td>
+<td align="center">9.75</td>
+</tr>
+<tr class="odd">
+<td align="center">Captain Lawrence Brewing Co.</td>
+<td align="center">9.55</td>
+</tr>
+<tr class="even">
+<td align="center">BrewDog</td>
+<td align="center">9.509</td>
+</tr>
+<tr class="odd">
+<td align="center">AleSmith Brewing Company</td>
+<td align="center">9.475</td>
+</tr>
+<tr class="even">
+<td align="center">Firestone Walker Brewing Co.</td>
+<td align="center">9.44</td>
+</tr>
+<tr class="odd">
+<td align="center">Nøgne Ø - Det Kompromissløse Bryggeri A/S</td>
+<td align="center">9.333</td>
+</tr>
+<tr class="even">
+<td align="center">Dogfish Head Brewery</td>
+<td align="center">9.277</td>
+</tr>
+<tr class="odd">
+<td align="center">Hair of the Dog Brewing Company / Brewery and Tasting Room</td>
+<td align="center">9.233</td>
+</tr>
+<tr class="even">
+<td align="center">Brouwerij Het Anker</td>
+<td align="center">9.214</td>
+</tr>
+<tr class="odd">
+<td align="center">Midnight Sun Brewing Co.</td>
+<td align="center">9.129</td>
+</tr>
+<tr class="even">
+<td align="center">Weyerbacher Brewing Co.</td>
+<td align="center">9.071</td>
+</tr>
+<tr class="odd">
+<td align="center">Uinta Brewing Company</td>
+<td align="center">9.029</td>
+</tr>
+<tr class="even">
+<td align="center">Shmaltz Brewing Company</td>
+<td align="center">9.024</td>
+</tr>
+<tr class="odd">
+<td align="center">Founders Brewing Company</td>
+<td align="center">8.918</td>
+</tr>
+<tr class="even">
+<td align="center">Avery Brewing Company</td>
+<td align="center">8.82</td>
+</tr>
+<tr class="odd">
+<td align="center">Alpine Beer Company</td>
+<td align="center">8.767</td>
+</tr>
+<tr class="even">
+<td align="center">Stone Brewing Co.</td>
+<td align="center">8.704</td>
+</tr>
+</tbody>
+</table>
+<p>I know lots of these! Again, these cutoffs and filters can be argued in many different ways depending on what you are ultimately using this analysis for. But for the sake of my curiosity, the end result seems pretty reasonable.</p>
+<p>If I had enough data, I’d love to start splitting this out by the country of the user. You could probably either look these up using the Beer Advocate API or the Google Maps API to get the address of these places.</p>
+</div>
+</div>
+<div id="q2" class="section level1">
+<h1>Question 2: Top Three Beers</h1>
+<blockquote>
+<p>If you had to pick 3 beers to recommend using only this data, which would you pick?</p>
+</blockquote>
+<p>The question here is trickier than “what are the three top rated beers?”. We can’t just take the mean, especially because most beers habe a single digit number of ratings.</p>
+<div id="approach-1" class="section level2">
+<h2>Approach 1</h2>
+<p>Inspired by: <a href="https://www.evanmiller.org/how-not-to-sort-by-average-rating.html" class="uri">https://www.evanmiller.org/how-not-to-sort-by-average-rating.html</a></p>
+<p>Here we need to divide our rankings into positive or negative. At least initially we do not bother filtering, let us see how these methods work without that.</p>
+<p>Based off the ratings distributions above, let us call ratings positive if they are 4 and above, negative otherwise.</p>
+<pre class="r"><code>beer_reviews &lt;- beer_reviews %&gt;%
+  mutate(positive_rating = case_when(
+    review_overall &lt; 4 ~ FALSE,
+    TRUE ~ TRUE
+  ))</code></pre>
+<p>Let us make an <code>R</code> implementation of the Lower bound of Wilson score confidence interval for a Bernoulli parameter that Evan Miller provides.</p>
+<pre class="r"><code>ci_lower_bound &lt;- function(pos_n, total_n, confidence) {
+  z &lt;- qnorm(1-(1-confidence)/2)
+  phat &lt;- pos_n/total_n
+  
+  (phat + z*z/(2*total_n) - z * sqrt((phat*(1-phat)+z*z/(4*total_n))/total_n))/(1+z*z/total_n)
+
+}</code></pre>
+<p>Now let’s try to apply!</p>
+<pre class="r"><code>top_beers &lt;- beer_reviews %&gt;% 
+  group_by(beer_beerid) %&gt;% 
+  summarise(
+    ci_lb=ci_lower_bound(
+      sum(positive_rating),
+      length(positive_rating),
+      0.95)
+    ) %&gt;% 
+  arrange(desc(ci_lb))
+top_three_beers &lt;- head(top_beers$beer_beerid, 3)</code></pre>
+<p>Check the result:</p>
+<pre class="r"><code>beer_lookup %&gt;% filter(beer_beerid %in% top_three_beers) %&gt;% pander</code></pre>
+<table>
+<colgroup>
+<col width="10%" />
+<col width="21%" />
+<col width="25%" />
+<col width="23%" />
+<col width="8%" />
+<col width="10%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th align="center">brewery_id</th>
+<th align="center">brewery_name</th>
+<th align="center">beer_style</th>
+<th align="center">beer_name</th>
+<th align="center">beer_abv</th>
+<th align="center">beer_beerid</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td align="center">1199</td>
+<td align="center">Founders Brewing Company</td>
+<td align="center">American Double / Imperial Stout</td>
+<td align="center">Founders CBS Imperial Stout</td>
+<td align="center">10.6</td>
+<td align="center">47658</td>
+</tr>
+<tr class="even">
+<td align="center">27039</td>
+<td align="center">The Alchemist</td>
+<td align="center">American Double / Imperial IPA</td>
+<td align="center">Heady Topper</td>
+<td align="center">8</td>
+<td align="center">16814</td>
+</tr>
+<tr class="odd">
+<td align="center">1549</td>
+<td align="center">Goose Island Beer Co.</td>
+<td align="center">English Barleywine</td>
+<td align="center">King Henry</td>
+<td align="center">13.4</td>
+<td align="center">61100</td>
+</tr>
+</tbody>
+</table>
+<p>Those are really good beers! Just as a check:</p>
+<pre class="r"><code>beer_reviews %&gt;% 
+  filter(beer_beerid %in% top_three_beers) %&gt;% 
+  group_by(beer_beerid, brewery_name) %&gt;% 
+  summarise(review_count=n(), mean_rating=mean(review_overall)) %&gt;%
+  pander</code></pre>
+<table style="width:99%;">
+<colgroup>
+<col width="19%" />
+<col width="37%" />
+<col width="20%" />
+<col width="20%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th align="center">beer_beerid</th>
+<th align="center">brewery_name</th>
+<th align="center">review_count</th>
+<th align="center">mean_rating</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td align="center">16814</td>
+<td align="center">The Alchemist</td>
+<td align="center">469</td>
+<td align="center">4.626</td>
+</tr>
+<tr class="even">
+<td align="center">47658</td>
+<td align="center">Founders Brewing Company</td>
+<td align="center">637</td>
+<td align="center">4.591</td>
+</tr>
+<tr class="odd">
+<td align="center">61100</td>
+<td align="center">Goose Island Beer Co.</td>
+<td align="center">98</td>
+<td align="center">4.617</td>
+</tr>
+</tbody>
+</table>
+<p>That was both surprisingly easy and seems to work pretty well<a href="#fn4" class="footnoteRef" id="fnref4"><sup>4</sup></a>! If you wanted to be really complete here we would see how this sorting changed based on what bound we decided to use for good/bad.</p>
+</div>
+<div id="approach-2" class="section level2">
+<h2>Approach 2</h2>
+<p>Taking the method from <a href="https://www.evanmiller.org/ranking-items-with-star-ratings.html" class="uri">https://www.evanmiller.org/ranking-items-with-star-ratings.html</a>. My approach below is definitely not the fastest way to calculate the score, but I found it to be the easiest to follow.</p>
+<p>First we need to build a table that has (per <code>beer_beerid</code>) the number of each rating.<a href="#fn5" class="footnoteRef" id="fnref5"><sup>5</sup></a></p>
+<pre class="r"><code>rating_count_tbl &lt;- beer_reviews %&gt;% 
+  count(beer_beerid, review_overall) %&gt;% 
+  spread(review_overall, n, fill=0) </code></pre>
+<pre class="r"><code>head(rating_count_tbl)</code></pre>
+<pre><code>## # A tibble: 6 x 11
+##   beer_beerid   `0`   `1` `1.5`   `2` `2.5`   `3` `3.5`   `4` `4.5`   `5`
+##         &lt;int&gt; &lt;dbl&gt; &lt;dbl&gt; &lt;dbl&gt; &lt;dbl&gt; &lt;dbl&gt; &lt;dbl&gt; &lt;dbl&gt; &lt;dbl&gt; &lt;dbl&gt; &lt;dbl&gt;
+## 1           3     0     0     0     0     0     0     0     2     1     0
+## 2           4     0     0     0     0     0     3     3     2     1     1
+## 3           5     0     3     1    13    23    96   109   123    49     7
+## 4           6     0     3     5    18    31   116   224   355   100    25
+## 5           7     0    13    24    37    71   161   156   144    36    17
+## 6           8     0     2     1     1     3    12    15    20     7     7</code></pre>
+<p>Now, per beer we need to calculate the <code>star_score</code>. The general strategy is to create a function that works for a set of reviews from one beer, and then pump that through a map to apply it to all beers individually.</p>
+<p>First let us put the <code>rating_count_tbl</code> into a form that is a bit more usable for mapping.</p>
+<pre class="r"><code>nested_ratings_tbl &lt;- rating_count_tbl %&gt;% nest(-beer_beerid)</code></pre>
+<p>Now, because the formula has a few pieces, I’m actually going to create three helper functions:</p>
+<ol style="list-style-type: decimal">
+<li>One function that calculates <code>s_k*(n_k+1)/(N+K)</code> for a given <code>k</code></li>
+</ol>
+<pre class="r"><code>sk_calc &lt;- function(n_k, s_k_str, total_n, n_possible_rankings) {
+  s_k &lt;- as.double(s_k_str)
+  s_k*(n_k + 1)/(total_n+n_possible_rankings)
+}</code></pre>
+<ol start="2" style="list-style-type: decimal">
+<li>Another function that calculates <code>s_k^2*(n_k + 1)/(N + K)</code> for a given <code>k</code>:</li>
+</ol>
+<pre class="r"><code>sk_sq_calc &lt;- function(n_k, s_k_str, total_n, n_possible_rankings) {
+  s_k &lt;- as.double(s_k_str)
+  s_k^2*(n_k + 1)/(total_n + n_possible_rankings)
+}</code></pre>
+<ol start="3" style="list-style-type: decimal">
+<li>And finally a function that takes in a row, calculates the pieces for the formula required, and then puts it together, outputting the <code>id</code> and <code>score</code>.</li>
+</ol>
+<pre class="r"><code>star_score &lt;- function(id, rating_df, confidence){
+  z &lt;- qnorm(1 - (1 - confidence)/2)
+  
+  total_n &lt;- sum(rating_df) 
+  n_possible_rankings &lt;- ncol(rating_df)
+  
+  sum_sk &lt;- rating_df %&gt;% 
+    imap_dbl(sk_calc, total_n, n_possible_rankings) %&gt;% 
+    sum
+  sum_sk_sq &lt;- rating_df %&gt;% 
+    imap_dbl(sk_sq_calc, total_n, n_possible_rankings) %&gt;% 
+    sum
+
+  score &lt;- sum_sk - z*sqrt((sum_sk_sq - (sum_sk^2))/(total_n + n_possible_rankings + 1))
+  tibble(id, score)
+}</code></pre>
+<p>TODO: See if there are better names for the variables inside the function. What are these values actually?</p>
+<p>Now we can map each row into our function and get a results table. Note that because <code>pmap</code> expects to your names to match the function arguments, we run this through a rename first.</p>
+<pre class="r"><code>scored_beers &lt;- nested_ratings_tbl %&gt;% 
+  rename(id=beer_beerid, rating_df=data) %&gt;% 
+  pmap_dfr(star_score, 0.95)</code></pre>
+<pre class="r"><code>top_three_beers2 &lt;- scored_beers %&gt;% arrange(desc(score)) %&gt;% top_n(3)</code></pre>
+<pre><code>## Selecting by score</code></pre>
+<pre class="r"><code>beer_lookup %&gt;% filter(beer_beerid %in% top_three_beers2$id) %&gt;% 
+  pander</code></pre>
+<table>
+<colgroup>
+<col width="10%" />
+<col width="24%" />
+<col width="25%" />
+<col width="20%" />
+<col width="8%" />
+<col width="10%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th align="center">brewery_id</th>
+<th align="center">brewery_name</th>
+<th align="center">beer_style</th>
+<th align="center">beer_name</th>
+<th align="center">beer_abv</th>
+<th align="center">beer_beerid</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td align="center">27039</td>
+<td align="center">The Alchemist</td>
+<td align="center">American Double / Imperial IPA</td>
+<td align="center">Heady Topper</td>
+<td align="center">8</td>
+<td align="center">16814</td>
+</tr>
+<tr class="even">
+<td align="center">863</td>
+<td align="center">Russian River Brewing Company</td>
+<td align="center">American Double / Imperial IPA</td>
+<td align="center">Pliny The Elder</td>
+<td align="center">8</td>
+<td align="center">7971</td>
+</tr>
+<tr class="odd">
+<td align="center">313</td>
+<td align="center">Brouwerij Westvleteren (Sint-Sixtusabdij van Westvleteren)</td>
+<td align="center">Quadrupel (Quad)</td>
+<td align="center">Trappist Westvleteren 12</td>
+<td align="center">10.2</td>
+<td align="center">1545</td>
+</tr>
+</tbody>
+</table>
+<p>Also some really good beers!</p>
+<p>Just as a double check:</p>
+<pre class="r"><code>beer_reviews %&gt;% 
+  filter(beer_beerid %in% top_three_beers2$id) %&gt;% 
+  group_by(beer_beerid, brewery_name,beer_name) %&gt;% 
+  summarise(review_count=n(), mean_rating=mean(review_overall)) %&gt;% 
+  pander</code></pre>
+<table style="width:100%;">
+<colgroup>
+<col width="13%" />
+<col width="31%" />
+<col width="26%" />
+<col width="14%" />
+<col width="14%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th align="center">beer_beerid</th>
+<th align="center">brewery_name</th>
+<th align="center">beer_name</th>
+<th align="center">review_count</th>
+<th align="center">mean_rating</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td align="center">1545</td>
+<td align="center">Brouwerij Westvleteren (Sint-Sixtusabdij van Westvleteren)</td>
+<td align="center">Trappist Westvleteren 12</td>
+<td align="center">1272</td>
+<td align="center">4.618</td>
+</tr>
+<tr class="even">
+<td align="center">7971</td>
+<td align="center">Russian River Brewing Company</td>
+<td align="center">Pliny The Elder</td>
+<td align="center">2527</td>
+<td align="center">4.59</td>
+</tr>
+<tr class="odd">
+<td align="center">16814</td>
+<td align="center">The Alchemist</td>
+<td align="center">Heady Topper</td>
+<td align="center">469</td>
+<td align="center">4.626</td>
+</tr>
+</tbody>
+</table>
+<p>It is kind of awesome when things work.</p>
+</div>
+</div>
+<div id="q3" class="section level1">
+<h1>Question Three: Factor Importance</h1>
+<p><strong>Which of the factors (aroma, taste, appearance, palette) are most important in determining the overall quality of a beer?</strong></p>
+<p>A simple approach would be to use a regression here, but we have some issues with collinearity between the predictors, which would make it more difficult to tease out importance.</p>
+<p>Instead let us use XGBoost. There have been a lot of good articles recently on XGBoost, and this was a fun occasion to try it out.</p>
+<p>Lots of good documentation at <a href="http://xgboost.readthedocs.io/en/latest/R-package/discoverYourData.html" class="uri">http://xgboost.readthedocs.io/en/latest/R-package/discoverYourData.html</a></p>
+<p>In this analysis, messing with parameters produced almost entirely the same result, so I’ve left pretty much everything at the default.</p>
+<pre class="r"><code>library(xgboost)</code></pre>
+<pre><code>## 
+## Attaching package: &#39;xgboost&#39;</code></pre>
+<pre><code>## The following object is masked from &#39;package:dplyr&#39;:
+## 
+##     slice</code></pre>
+<p>Split reviews between predictors and response</p>
+<pre class="r"><code>rating_response &lt;- beer_reviews$review_overall
+rating_predictors &lt;- as.matrix(
+  beer_reviews %&gt;% select(review_aroma, review_palate, review_taste, review_appearance)
+)</code></pre>
+<p>Now we can train model. Training here converges fairly quickly, but you will need to find the best <code>nrounds</code> for your data set.</p>
+<pre class="r"><code>xgb_mod = xgboost(rating_predictors, rating_response, 
+                  objective=&quot;reg:linear&quot;,
+                  nrounds=25,
+                  verbose = 0)</code></pre>
+<p>Now we can extract importance in prediction, and make sense of it:</p>
+<pre class="r"><code>importance_dt = xgb.importance(colnames(rating_predictors), xgb_mod)
+
+#plot importance
+xgb.ggplot.importance(importance_dt) +
+  labs(title=&quot;Which of the factors are most important in determining the overall quality of a beer?&quot;,
+       subtitle=&quot;Aroma, taste, appearance, palette&quot;)</code></pre>
+<p><img src="/posts/beer_reviews_files/figure-html/unnamed-chunk-33-1.png" width="672" /></p>
+<p>You can see that taste (perhaps as you’d expect) is the most important predictor. Would be interesting to look at the beers that had the most divergent scores between taste and overall to see if there is any patterns (maybe there is a category of beer that has less important of taste? Maybe there is a class of users that cares more about aroma?).</p>
+</div>
+<div id="q4" class="section level1">
+<h1>Question Four: Aroma and Appearance</h1>
+<p><strong>Lastly, if I typically enjoy a beer due to its aroma and appearance, which beer style should I try?</strong>.</p>
+<p>Specifically, we aren’t looking for a specific beer anymore, but a style to test out.</p>
+<p>My initial intuition on this question is to basically do what we did in question two, but apply this on beer styles (instead of individual beers) and do an average scoring of <code>review_aroma</code> and <code>review_appearence</code>. I could definitely see other valid approaches.</p>
+<div id="using-the-second-approach-in-q2" class="section level2">
+<h2>Using the second approach in Q2</h2>
+<pre class="r"><code>aroma_rating_count_tbl &lt;- beer_reviews %&gt;% 
+  count(beer_style, review_aroma) %&gt;% 
+  spread(review_aroma, n, fill=0) 
+
+appearance_rating_count_tbl &lt;- beer_reviews %&gt;% 
+  count(beer_style, review_appearance) %&gt;% 
+  spread(review_appearance, n, fill=0) </code></pre>
+<p>Now nest these as before:</p>
+<pre class="r"><code>aroma_nested_ratings_tbl &lt;- aroma_rating_count_tbl %&gt;% nest(-beer_style)
+
+appearance_nested_ratings_tbl &lt;- appearance_rating_count_tbl %&gt;% nest(-beer_style)</code></pre>
+<p>Now just map them through our function as before:</p>
+<pre class="r"><code>aroma_scored_beers &lt;- aroma_nested_ratings_tbl %&gt;% 
+  rename(id=beer_style, rating_df=data) %&gt;% 
+  pmap_dfr(star_score, 0.95)
+
+appearance_scored_beers &lt;- appearance_nested_ratings_tbl %&gt;% 
+  rename(id=beer_style, rating_df=data) %&gt;% 
+  pmap_dfr(star_score, 0.95)</code></pre>
+<p>Join based on the style and take the average of the two scores:</p>
+<pre class="r"><code>final_score &lt;- aroma_scored_beers %&gt;%
+  left_join(appearance_scored_beers, by=&quot;id&quot;, suffix = c(&quot;_aroma&quot;, &quot;_appearance&quot;)) %&gt;% 
+  mutate(combined_score = (score_aroma+score_appearance)/2) %&gt;%
+  arrange(desc(combined_score))</code></pre>
+<pre class="r"><code>head(final_score) %&gt;% pander</code></pre>
+<table>
+<colgroup>
+<col width="40%" />
+<col width="17%" />
+<col width="23%" />
+<col width="19%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th align="center">id</th>
+<th align="center">score_aroma</th>
+<th align="center">score_appearance</th>
+<th align="center">combined_score</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td align="center">American Double / Imperial Stout</td>
+<td align="center">4.155</td>
+<td align="center">4.159</td>
+<td align="center">4.157</td>
+</tr>
+<tr class="even">
+<td align="center">Russian Imperial Stout</td>
+<td align="center">4.072</td>
+<td align="center">4.206</td>
+<td align="center">4.139</td>
+</tr>
+<tr class="odd">
+<td align="center">Quadrupel (Quad)</td>
+<td align="center">4.124</td>
+<td align="center">4.11</td>
+<td align="center">4.117</td>
+</tr>
+<tr class="even">
+<td align="center">American Double / Imperial IPA</td>
+<td align="center">4.094</td>
+<td align="center">4.076</td>
+<td align="center">4.085</td>
+</tr>
+<tr class="odd">
+<td align="center">Gueuze</td>
+<td align="center">4.102</td>
+<td align="center">4.02</td>
+<td align="center">4.061</td>
+</tr>
+<tr class="even">
+<td align="center">American Wild Ale</td>
+<td align="center">4.118</td>
+<td align="center">3.997</td>
+<td align="center">4.058</td>
+</tr>
+</tbody>
+</table>
+<p>We could create functions to do this for arbitrary amounts of scores (and create a better <code>review_overall</code> value).</p>
+<p>We could also use the results from question three to inform how we average these two scores, but that depends on the finer details of the question. Are you informing me that you care equally about those two? Or should I take the importance we figured out from the data?</p>
+</div>
+</div>
+<div id="footnotes" class="section level1">
+<h1>Footnotes</h1>
+<p>Eisbocks are created by freezing off a portion of the water, and removing it from the beer. This form of concentration, of sorts, increases the beer’s body, flavor, and alcohol content. They can range from near black to as light as tawny red. Hop bitterness and flavor are mostly cast aside with a big alcohol presence replacing it, which can range from sweet to spicy, and fruity to often times fusel. Look for a heavy or almost syrupy body with tons of malty flavor.</p>
+<p><code>r   beer_reviews %&gt;%      group_by(review_profilename, beer_beerid, beer_name) %&gt;%      tally() %&gt;%      arrange(desc(n))</code></p>
+<p><code>## # A tibble: 1,571,808 x 4   ## # Groups:   review_profilename, beer_beerid [1,571,808]   ##    review_profilename beer_beerid   ##                 &lt;chr&gt;       &lt;int&gt;   ##  1         AgentMunky       44713   ##  2            akorsak       14916   ##  3            akorsak       15881   ##  4            akorsak       48186   ##  5            akorsak       63912   ##  6         AleWatcher          39   ##  7        BretSikkink       12896   ##  8            ClarkVV       28190   ##  9       DoubleSimcoe       38470   ## 10             glid02        1543   ## # ... with 1,571,798 more rows, and 2 more variables: beer_name &lt;chr&gt;,   ## #   n &lt;int&gt;</code> } Not really! I’m actually surprised by how low this ends up being.</p>
+<p>```r max_beer_id &lt;- review_tally %&gt;% filter(n==max(n)) %&gt;% select(beer_beerid)</p>
+<p>beer_reviews %&gt;% filter(beer_beerid==max_beer_id$beer_beerid) %&gt;% select(beer_name, brewery_name) %&gt;% head(1) ```</p>
+<p><code>## # A tibble: 1 x 2   ##       beer_name         brewery_name   ##           &lt;chr&gt;                &lt;chr&gt;   ## 1 90 Minute IPA Dogfish Head Brewery</code> } Also unexpected! That’s a delicious beer, but I would not expect it to be the most reviewed.</p>
+</div>
+<div class="footnotes">
+<hr />
+<ol>
+<li id="fn1"><p>Aparently the “Schorschbräu Schorschbock 57%” is both rare and not that great: <a href="https://www.beeradvocate.com/beer/profile/6513/73368/" class="uri">https://www.beeradvocate.com/beer/profile/6513/73368/</a>. Also - this is apparently how you make an “Eisbock”:<a href="#fnref1">↩</a></p></li>
+<li id="fn2"><p>Are there particular users who just review the same exact beer over and over? {<a href="#fnref2">↩</a></p></li>
+<li id="fn3"><p>What is the most reviewed beer? {<a href="#fnref3">↩</a></p></li>
+<li id="fn4"><p>For more on how good the alchemist is, see: <a href="https://longreads.com/2017/03/01/the-story-of-heady-topper-americas-most-loved-craft-beer/" class="uri">https://longreads.com/2017/03/01/the-story-of-heady-topper-americas-most-loved-craft-beer/</a><a href="#fnref4">↩</a></p></li>
+<li id="fn5"><p>With thanks to <a href="https://stackoverflow.com/questions/37364249/tidyr-how-to-spread-into-count-of-occurrence" class="uri">https://stackoverflow.com/questions/37364249/tidyr-how-to-spread-into-count-of-occurrence</a>. Straightfowards once you know the solution.<a href="#fnref5">↩</a></p></li>
+</ol>
+</div>
+
+      
+
+    </main>
+  </div>
+  <div class="pure-u-1-24 pure-u-lg-1-12 pure-u-xl-1-5"></div>
+</div>
+<div class="pure-g" id="foot">
+  <div class="pure-u-1">
+    
+    
+      
+
+
+    
+  </div>
+</div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/timeago.js/2.0.4/timeago.min.js" integrity="sha256-34otvl+f6DWlliQUlAwT5hvizEJc8lPlNpW9T23pfGA=" crossorigin="anonymous"></script>
+<script type="text/javascript">
+  new timeago().render(document.querySelectorAll('.timeago'));
+</script>
+
+</body>
+</html>

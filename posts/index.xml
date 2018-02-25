@@ -1,14 +1,14 @@
 <?xml version="1.0" encoding="utf-8" standalone="yes" ?>
 <rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
   <channel>
-    <title>Off-Hours</title>
-    <link>http://newtux.github.io/</link>
-    <description>Recent content on Off-Hours</description>
+    <title>Posts on Off-Hours</title>
+    <link>http://newtux.github.io/posts/</link>
+    <description>Recent content in Posts on Off-Hours</description>
     <generator>Hugo -- gohugo.io</generator>
     <language>en-us</language>
     <lastBuildDate>Sun, 25 Feb 2018 14:35:56 -0500</lastBuildDate>
     
-	<atom:link href="http://newtux.github.io/index.xml" rel="self" type="application/rss+xml" />
+	<atom:link href="http://newtux.github.io/posts/index.xml" rel="self" type="application/rss+xml" />
     
     
     <item>
