@@ -57,6 +57,9 @@
 <li><a href="#q4">Lastly, if I typically enjoy a beer due to its aroma and appearance, which beer style should I try?</a></li>
 </ol>
 </div>
+
+<!--more-->
+
 <div id="set-up" class="section level1">
 <h1>Set up</h1>
 <pre class="r"><code>library(tidyverse)</code></pre>
@@ -1199,22 +1202,141 @@ appearance_scored_beers &lt;- appearance_nested_ratings_tbl %&gt;%
 </div>
 <div id="footnotes" class="section level1">
 <h1>Footnotes</h1>
-<p>Eisbocks are created by freezing off a portion of the water, and removing it from the beer. This form of concentration, of sorts, increases the beer’s body, flavor, and alcohol content. They can range from near black to as light as tawny red. Hop bitterness and flavor are mostly cast aside with a big alcohol presence replacing it, which can range from sweet to spicy, and fruity to often times fusel. Look for a heavy or almost syrupy body with tons of malty flavor.</p>
-<p><code>r   beer_reviews %&gt;%      group_by(review_profilename, beer_beerid, beer_name) %&gt;%      tally() %&gt;%      arrange(desc(n))</code></p>
-<p><code>## # A tibble: 1,571,808 x 4   ## # Groups:   review_profilename, beer_beerid [1,571,808]   ##    review_profilename beer_beerid   ##                 &lt;chr&gt;       &lt;int&gt;   ##  1         AgentMunky       44713   ##  2            akorsak       14916   ##  3            akorsak       15881   ##  4            akorsak       48186   ##  5            akorsak       63912   ##  6         AleWatcher          39   ##  7        BretSikkink       12896   ##  8            ClarkVV       28190   ##  9       DoubleSimcoe       38470   ## 10             glid02        1543   ## # ... with 1,571,798 more rows, and 2 more variables: beer_name &lt;chr&gt;,   ## #   n &lt;int&gt;</code> } Not really! I’m actually surprised by how low this ends up being.</p>
-<p>```r max_beer_id &lt;- review_tally %&gt;% filter(n==max(n)) %&gt;% select(beer_beerid)</p>
-<p>beer_reviews %&gt;% filter(beer_beerid==max_beer_id$beer_beerid) %&gt;% select(beer_name, brewery_name) %&gt;% head(1) ```</p>
-<p><code>## # A tibble: 1 x 2   ##       beer_name         brewery_name   ##           &lt;chr&gt;                &lt;chr&gt;   ## 1 90 Minute IPA Dogfish Head Brewery</code> } Also unexpected! That’s a delicious beer, but I would not expect it to be the most reviewed.</p>
 </div>
 <div class="footnotes">
 <hr />
 <ol>
-<li id="fn1"><p>Aparently the “Schorschbräu Schorschbock 57%” is both rare and not that great: <a href="https://www.beeradvocate.com/beer/profile/6513/73368/" class="uri">https://www.beeradvocate.com/beer/profile/6513/73368/</a>. Also - this is apparently how you make an “Eisbock”:<a href="#fnref1">↩</a></p></li>
-<li id="fn2"><p>Are there particular users who just review the same exact beer over and over? {<a href="#fnref2">↩</a></p></li>
-<li id="fn3"><p>What is the most reviewed beer? {<a href="#fnref3">↩</a></p></li>
-<li id="fn4"><p>For more on how good the alchemist is, see: <a href="https://longreads.com/2017/03/01/the-story-of-heady-topper-americas-most-loved-craft-beer/" class="uri">https://longreads.com/2017/03/01/the-story-of-heady-topper-americas-most-loved-craft-beer/</a><a href="#fnref4">↩</a></p></li>
-<li id="fn5"><p>With thanks to <a href="https://stackoverflow.com/questions/37364249/tidyr-how-to-spread-into-count-of-occurrence" class="uri">https://stackoverflow.com/questions/37364249/tidyr-how-to-spread-into-count-of-occurrence</a>. Straightfowards once you know the solution.<a href="#fnref5">↩</a></p></li>
-</ol>
+  <li id="fn1">
+    <p>Aparently the “Schorschbräu Schorschbock 57%” is both rare and not that great: <a href="https://www.beeradvocate.com/beer/profile/6513/73368/" class="uri">https://www.beeradvocate.com/beer/profile/6513/73368/</a>. Also - this is apparently how you make an “Eisbock”:
+    <p>Eisbocks are created by freezing off a portion of the water, and removing it from the beer. This form of concentration, of sorts, increases the beer’s body, flavor, and alcohol content. They can range from near black to as light as tawny red. Hop bitterness and flavor are mostly cast aside with a big alcohol presence replacing it, which can range from sweet to spicy, and fruity to often times fusel. Look for a heavy or almost syrupy body with tons of malty flavor.</p>
+    <a href="#fnref1">↩</a>
+  </p>
+  </li>
+  <li id="fn2">
+    <p>Are there particular users who just review the same exact beer over and over? 
+      <pre class="r"><code>beer_reviews %&gt;%
+            group_by(review_profilename, beer_beerid, beer_name) %&gt;%
+            tally() %&gt;%
+            arrange(desc(n))  %&gt;%
+            head(10) %&gt;%
+            pander</code></pre>
+      <table style="width:97%;">
+      <colgroup>
+      <col width="28%" />
+      <col width="19%" />
+      <col width="45%" />
+      <col width="4%" />
+      </colgroup>
+      <thead>
+      <tr class="header">
+      <th align="center">review_profilename</th>
+      <th align="center">beer_beerid</th>
+      <th align="center">beer_name</th>
+      <th align="center">n</th>
+      </tr>
+      </thead>
+      <tbody>
+      <tr class="odd">
+      <td align="center">AgentMunky</td>
+      <td align="center">44713</td>
+      <td align="center">IPA</td>
+      <td align="center">4</td>
+      </tr>
+      <tr class="even">
+      <td align="center">akorsak</td>
+      <td align="center">14916</td>
+      <td align="center">Hop Wallop</td>
+      <td align="center">4</td>
+      </tr>
+      <tr class="odd">
+      <td align="center">akorsak</td>
+      <td align="center">15881</td>
+      <td align="center">Tröegs Nugget Nectar</td>
+      <td align="center">4</td>
+      </tr>
+      <tr class="even">
+      <td align="center">akorsak</td>
+      <td align="center">48186</td>
+      <td align="center">Planet Bean Coffee Stout</td>
+      <td align="center">4</td>
+      </tr>
+      <tr class="odd">
+      <td align="center">akorsak</td>
+      <td align="center">63912</td>
+      <td align="center">Scratch Beer 38 - 2010 (IPA #2 Of 4)</td>
+      <td align="center">4</td>
+      </tr>
+      <tr class="even">
+      <td align="center">AleWatcher</td>
+      <td align="center">39</td>
+      <td align="center">Alpha King Pale Ale</td>
+      <td align="center">4</td>
+      </tr>
+      <tr class="odd">
+      <td align="center">BretSikkink</td>
+      <td align="center">12896</td>
+      <td align="center">Hop Knot</td>
+      <td align="center">4</td>
+      </tr>
+      <tr class="even">
+      <td align="center">ClarkVV</td>
+      <td align="center">28190</td>
+      <td align="center">Harpoon Kellerbier (100 Barrel Series #13)</td>
+      <td align="center">4</td>
+      </tr>
+      <tr class="odd">
+      <td align="center">DoubleSimcoe</td>
+      <td align="center">38470</td>
+      <td align="center">Stone Sublimely Self-Righteous Ale</td>
+      <td align="center">4</td>
+      </tr>
+      <tr class="even">
+      <td align="center">glid02</td>
+      <td align="center">1543</td>
+      <td align="center">Sawtooth Ale</td>
+      <td align="center">4</td>
+      </tr>
+      </tbody>
+      </table>
+      <p>Not really! I’m actually surprised by how low this ends up being.</p>
+      <a href="#fnref2">↩</a>
+    </p>
+  </li>
+  <li id="fn3">
+    <p>What is the most reviewed beer?
+      <pre class="r"><code>max_beer_id &lt;- review_tally %&gt;%
+       filter(n==max(n)) %&gt;%
+        select(beer_beerid)
+      beer_reviews %&gt;%
+       filter(beer_beerid==max_beer_id$beer_beerid) %&gt;%
+        select(beer_name, brewery_name) %&gt;%
+         head(1) %&gt;% pander
+      </code></pre>
+      <table style="width:53%;">
+      <colgroup>
+      <col width="22%" />
+      <col width="30%" />
+      </colgroup>
+      <thead>
+      <tr class="header">
+      <th align="center">beer_name</th>
+      <th align="center">brewery_name</th>
+      </tr>
+      </thead>
+      <tbody>
+      <tr class="odd">
+      <td align="center">90 Minute IPA</td>
+      <td align="center">Dogfish Head Brewery</td>
+      </tr>
+      </tbody>
+      </table>
+      <p>Also unexpected! That’s a delicious beer, but I would not expect it to be the most reviewed.</p>
+    <a href="#fnref3">↩</a>
+    </p>
+  </li>
+  <li id="fn4"><p>For more on how good the alchemist is, see: <a href="https://longreads.com/2017/03/01/the-story-of-heady-topper-americas-most-loved-craft-beer/" class="uri">https://longreads.com/2017/03/01/the-story-of-heady-topper-americas-most-loved-craft-beer/</a><a href="#fnref4">↩</a></p></li>
+  <li id="fn5"><p>With thanks to <a href="https://stackoverflow.com/questions/37364249/tidyr-how-to-spread-into-count-of-occurrence" class="uri">https://stackoverflow.com/questions/37364249/tidyr-how-to-spread-into-count-of-occurrence</a>. Straightfowards once you know the solution.<a href="#fnref5">↩</a></p></li>
+  </ol>
 </div>
 
       
