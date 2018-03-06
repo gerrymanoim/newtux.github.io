@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+    <title>Experimenting with WordVectors and Codenames</title>
+    <link rel="stylesheet" href="https://unpkg.com/purecss@0.6.2/build/pure-min.css" integrity="sha384-UQiGfs9ICog+LwheBSRCt1o5cbyKIHbwjWscjemyBMT9YCUMZffs6UqUTd0hObXD" crossorigin="anonymous">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    
+    
+    <meta name="generator" content="Hugo 0.33" />
+    
+    
+    
+      <link rel="stylesheet" href="https://unpkg.com/purecss@0.6.2/build/grids-responsive-min.css">
+    
+    
+    <link rel="stylesheet" href="http://newtux.github.io/css/plain-blog.css">
+</head>
+<body>
+<div class="pure-g">
+  <div class="pure-u-1" id="header">
+    <a href="http://newtux.github.io/">Off-Hours</a>
+    
+    
+      <a href="/about/">About</a>
+    
+  </div>
+</div>
+<div class="pure-g">
+  <div class="pure-u-1-24 pure-u-lg-1-12 pure-u-xl-1-5"></div>
+  <div class="pure-u-11-12 pure-u-lg-5-6 pure-u-xl-3-5" id="main">
+  	<main>
+  	  <header>
+  	    <h1>Experimenting with WordVectors and Codenames</h1>
+        <time datetime="2018-01-22T21:29:54-05:00" class="post-list timeago">2018-01-22</time>
+        
+
+
+
+  
+    <a class="tag" href="http://newtux.github.io/categories/rough-edges">Category: rough edges</a>
+  
+
+
+
+
+
+  	  </header>
+
+  	  
+
+
+      
+
+  	  
+        
+
+<p>I&rsquo;ve been playing a lot of <a href="https://boardgamegeek.com/boardgame/178900/codenames">Codenames</a> and came across <a href="https://jamesmullenbach.github.io/2018/01/02/codenames-fun.html">https://jamesmullenbach.github.io/2018/01/02/codenames-fun.html</a> which explored using word2vec to generate clue words. This was really cool! I started wondering if we could use a similar approach to actually play as a spymaster, i.e. answering the question:</p>
+
+<p>Given a game board and a side, what should my clue word + targeted number be?</p>
+
+<p>This post is a collection of some things I tried and the results.</p>
+
+<p>Plan is to try a two step approach:</p>
+
+<ol>
+<li>Define matrix similarity between all pairs of words on the board (or just our words)?</li>
+<li>Find pair groupings and then use a method to grab the correct code word for each grouping. Then sort by score to find play steps.</li>
+</ol>
+
+<p>I think this should generally works but perhaps misses situations where the codeword provides the link to other words? Maybe I misunderstand how GloVe and word2vec actually works.</p>
+
+<p>Alternatively, maybe for each word compute the top-n similar words from corpus and look for largest matches across that list? It is supposed to consider all &ldquo;senses&rdquo; of the word at the same time, but maybe this doesn&rsquo;t really capture the blah+blah relationship as well. It is also hard to do the &ldquo;negative&rdquo; aspect of to avoid opponent words with this approach.</p>
+<div class="highlight"><pre style="background-color:#fff;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-python" data-lang="python"><span style="color:#00f">import</span> gensim
+<span style="color:#00f">import</span> matplotlib.pyplot <span style="color:#00f">as</span> plt
+<span style="color:#00f">import</span> pandas <span style="color:#00f">as</span> pd
+<span style="color:#00f">import</span> seaborn <span style="color:#00f">as</span> sns
+%matplotlib inline</code></pre></div>
+<h1 id="game-setup">Game Setup</h1>
+<div class="highlight"><pre style="background-color:#fff;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-python" data-lang="python"><span style="color:#008000">#Note that GloVe seems to be all lowercase</span>
+ours = [<span style="color:#a31515"></span><span style="color:#a31515">&#39;watch&#39;</span>, <span style="color:#a31515"></span><span style="color:#a31515">&#39;star&#39;</span>, <span style="color:#a31515"></span><span style="color:#a31515">&#39;mole&#39;</span>, <span style="color:#a31515"></span><span style="color:#a31515">&#39;berlin&#39;</span>, <span style="color:#a31515"></span><span style="color:#a31515">&#39;limousine&#39;</span>, <span style="color:#a31515"></span><span style="color:#a31515">&#39;day&#39;</span>, <span style="color:#a31515"></span><span style="color:#a31515">&#39;wind&#39;</span>, <span style="color:#a31515"></span><span style="color:#a31515">&#39;cap&#39;</span>, <span style="color:#a31515"></span><span style="color:#a31515">&#39;thumb&#39;</span>]                                  
+theirs = [<span style="color:#a31515"></span><span style="color:#a31515">&#39;smuggler&#39;</span>, <span style="color:#a31515"></span><span style="color:#a31515">&#39;crown&#39;</span>, <span style="color:#a31515"></span><span style="color:#a31515">&#39;cotton&#39;</span>, <span style="color:#a31515"></span><span style="color:#a31515">&#39;palm&#39;</span>, <span style="color:#a31515"></span><span style="color:#a31515">&#39;pumpkin&#39;</span>, <span style="color:#a31515"></span><span style="color:#a31515">&#39;giant&#39;</span>, <span style="color:#a31515"></span><span style="color:#a31515">&#39;link&#39;</span>, <span style="color:#a31515"></span><span style="color:#a31515">&#39;dog&#39;</span>]                                     
+assassin = <span style="color:#a31515"></span><span style="color:#a31515">&#39;tie&#39;</span>
+
+bystander = [] <span style="color:#008000"># TODO </span></code></pre></div>
+<h1 id="model-setup">Model Setup</h1>
+
+<p>I honestly do not know how to calibrate the limit here. Using the full dataset started to give meaningless words, so 100k-200k seemed reasonable enough, but certainly an area I can improve.</p>
+<div class="highlight"><pre style="background-color:#fff;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-python" data-lang="python">limit = 200000
+<span style="color:#008000">#limit = 100000</span>
+<span style="color:#008000">#limit = 10000</span>
+model = gensim.models.KeyedVectors.load_word2vec_format(<span style="color:#a31515"></span><span style="color:#a31515">&#39;glove.6B.300d.w2vformat.txt&#39;</span>,limit=limit)</code></pre></div>
+<h1 id="similarity">Similarity</h1>
+
+<p>First, let us look for similar pairings between our words. The goal is to find groups of words that are related such that we can come up with a good guess for a large group of them.</p>
+<div class="highlight"><pre style="background-color:#fff;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-python" data-lang="python">sim_plot = {}
+<span style="color:#00f">for</span> our1, our2 <span style="color:#00f">in</span> itertools.permutations(ours, r=2):
+    sim_score = model.similarity(our1, our2)
+    sim_plot[(our1, our2)] = sim_score</code></pre></div><div class="highlight"><pre style="background-color:#fff;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-python" data-lang="python"><span style="color:#008000"># thanks stackoverflow https://stackoverflow.com/questions/33711107/create-heatmap-in-python-matplotlib-with-x-and-y-labels-from-dict-with-tuplefl</span>
+ser = pd.Series(list(sim_plot.values()),
+                  index=pd.MultiIndex.from_tuples(sim_plot.keys()))
+df = ser.unstack().fillna(0)
+df.shape</code></pre></div>
+<pre><code>(9, 9)
+</code></pre>
+<div class="highlight"><pre style="background-color:#fff;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-python" data-lang="python">sns.heatmap(df)</code></pre></div>
+<pre><code>&lt;matplotlib.axes._subplots.AxesSubplot at 0x119af24a8&gt;
+</code></pre>
+
+<p><img src="/img/output_9_1.png" alt="Word Heatmap" /></p>
+
+<p>So we can see that there are clearly streaks that words are related to (i.e. day, star, watch). If we could identify which sets of words are all similar to each other, we can then get a good &ldquo;guess word&rdquo; to attempt to guess them.</p>
+
+<p>First we create a combination dictionary set of pairings (no repetitions).</p>
+<div class="highlight"><pre style="background-color:#fff;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-python" data-lang="python">sim_scores = {}
+<span style="color:#00f">for</span> our1, our2 <span style="color:#00f">in</span> itertools.combinations(ours, r=2):
+    sim_score = model.similarity(our1, our2)
+    sim_scores[(our1, our2)] = sim_score</code></pre></div><div class="highlight"><pre style="background-color:#fff;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-python" data-lang="python"><span style="color:#008000"># Spotchecking a sorted list</span>
+[(k, sim_scores[k]) <span style="color:#00f">for</span> k <span style="color:#00f">in</span> sorted(sim_scores, key=sim_scores.get, reverse=True)]</code></pre></div>
+<pre><code>[(('watch', 'day'), 0.37514241187432329),
+ (('watch', 'star'), 0.28565866686466912),
+ (('star', 'day'), 0.25423088886435047),
+ (('day', 'cap'), 0.24668969106358352),
+ (('day', 'wind'), 0.22283071632086576),
+ (('berlin', 'day'), 0.21901472202036207),
+ (('watch', 'wind'), 0.17444253032602311),
+ (('star', 'cap'), 0.16659693066392339),
+ (('wind', 'cap'), 0.16027926240718121),
+ (('watch', 'cap'), 0.13538321191983341),
+ (('star', 'berlin'), 0.13393670868056315),
+ (('watch', 'thumb'), 0.11762509579768289),
+ (('wind', 'thumb'), 0.11714097497913646),
+ (('cap', 'thumb'), 0.11642544987741486),
+ (('watch', 'berlin'), 0.11433065814529794),
+ (('berlin', 'limousine'), 0.10801183395242543),
+ (('mole', 'thumb'), 0.096494190506101474),
+ (('mole', 'cap'), 0.095856856444625077),
+ (('star', 'wind'), 0.092185070348409004),
+ (('star', 'thumb'), 0.073943495417605309),
+ (('day', 'thumb'), 0.066514873513246656),
+ (('limousine', 'thumb'), 0.066142344619587887),
+ (('star', 'mole'), 0.065607799006377907),
+ (('watch', 'limousine'), 0.064431647730000041),
+ (('berlin', 'wind'), 0.048947815642132464),
+ (('watch', 'mole'), 0.046652258619719916),
+ (('star', 'limousine'), 0.036328869305868698),
+ (('limousine', 'day'), 0.031309301816755841),
+ (('limousine', 'cap'), 0.022116670372110504),
+ (('mole', 'wind'), -0.017555914493282518),
+ (('berlin', 'thumb'), -0.01870976125055776),
+ (('limousine', 'wind'), -0.019992408304264193),
+ (('berlin', 'cap'), -0.023411986229483463),
+ (('mole', 'day'), -0.023640935162020184),
+ (('mole', 'berlin'), -0.024835119294389009),
+ (('mole', 'limousine'), -0.052624679342753951)]
+</code></pre>
+<div class="highlight"><pre style="background-color:#fff;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-python" data-lang="python">model.most_similar_cosmul(positive=[<span style="color:#a31515"></span><span style="color:#a31515">&#39;watch&#39;</span>, <span style="color:#a31515"></span><span style="color:#a31515">&#39;day&#39;</span>, <span style="color:#a31515"></span><span style="color:#a31515">&#39;star&#39;</span>], topn=10)</code></pre></div>
+<pre><code>[('watching', 0.4108252227306366),
+ ('night', 0.3927326202392578),
+ ('every', 0.3823442757129669),
+ ('next', 0.3760867714881897),
+ ('one', 0.37489062547683716),
+ ('time', 0.3740050494670868),
+ ('week', 0.37250274419784546),
+ ('just', 0.3684304356575012),
+ ('days', 0.3660135269165039),
+ ('will', 0.36386603116989136)]
+</code></pre>
+
+<p>This seems to work <em>reasonably</em> well, though I have to do something about watching. I suppose that (night,3) is not a bad guess here.</p>
+
+<p>Two problems:</p>
+
+<ol>
+<li>How to select the positive groupings?</li>
+<li>Ideally what we want to do is select a word that is positive for our group, but negative for opponent words similar to our words.</li>
+</ol>
+
+<p>I haven&rsquo;t yet found a great way to do #1, so saving that for a future posting.</p>
+
+<h1 id="problem-2">Problem 2</h1>
+
+<p>Given a tuple to guess, let us also take into account the other team&rsquo;s words (and later the assassin)?</p>
+<div class="highlight"><pre style="background-color:#fff;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-python" data-lang="python"><span style="color:#00f">print</span>(model.most_similar_cosmul(positive=[<span style="color:#a31515"></span><span style="color:#a31515">&#39;cap&#39;</span>, <span style="color:#a31515"></span><span style="color:#a31515">&#39;day&#39;</span>], topn=10))
+model.most_similar_cosmul(positive=[<span style="color:#a31515"></span><span style="color:#a31515">&#39;cap&#39;</span>, <span style="color:#a31515"></span><span style="color:#a31515">&#39;day&#39;</span>], negative = [<span style="color:#a31515"></span><span style="color:#a31515">&#39;dog&#39;</span>, <span style="color:#a31515"></span><span style="color:#a31515">&#39;cotton&#39;</span>], topn=10)
+model.most_similar_cosmul(positive=[<span style="color:#a31515"></span><span style="color:#a31515">&#39;cap&#39;</span>, <span style="color:#a31515"></span><span style="color:#a31515">&#39;day&#39;</span>], negative = [<span style="color:#a31515"></span><span style="color:#a31515">&#39;dog&#39;</span>, <span style="color:#a31515"></span><span style="color:#a31515">&#39;cotton&#39;</span>]+[assassin], topn=10)</code></pre></div>
+<pre><code>[('week', 0.5281243920326233), ('year', 0.5217856764793396), ('next', 0.5213299989700317), ('month', 0.5160055756568909), ('last', 0.5150201916694641), ('days', 0.5131337642669678), ('caps', 0.5125208497047424), ('one', 0.5038270950317383), ('up', 0.5035602450370789), ('every', 0.5013327598571777)]
+
+
+
+
+
+[('commemorations', 4.051915168762207),
+ ('8-hour', 3.6414382457733154),
+ ('departures', 3.597616672515869),
+ ('sivarathri', 3.5366008281707764),
+ ('dawning', 3.4971296787261963),
+ ('commemoration', 3.459064245223999),
+ ('matins', 3.4307830333709717),
+ ('pournami', 3.3892810344696045),
+ ('montebello', 3.385812520980835),
+ ('2008-2012', 3.3688387870788574)]
+</code></pre>
+<div class="highlight"><pre style="background-color:#fff;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-python" data-lang="python">model.most_similar_cosmul(positive=[<span style="color:#a31515"></span><span style="color:#a31515">&#39;watch&#39;</span>, <span style="color:#a31515"></span><span style="color:#a31515">&#39;day&#39;</span>, <span style="color:#a31515"></span><span style="color:#a31515">&#39;star&#39;</span>], negative = [<span style="color:#a31515"></span><span style="color:#a31515">&#39;dog&#39;</span>, <span style="color:#a31515"></span><span style="color:#a31515">&#39;giant&#39;</span>], topn=10)</code></pre></div>
+<pre><code>[('night', 1.0589104890823364),
+ ('players', 1.0469601154327393),
+ ('stars', 1.0464136600494385),
+ ('attend', 1.0428208112716675),
+ ('evening', 1.0407984256744385),
+ ('hour', 1.0318739414215088),
+ ('watching', 1.0276291370391846),
+ ('weekend', 1.0213871002197266),
+ ('saturday', 1.0206987857818604),
+ ('wait', 1.0189775228500366)]
+</code></pre>
+<div class="highlight"><pre style="background-color:#fff;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-python" data-lang="python">target_words = [<span style="color:#a31515"></span><span style="color:#a31515">&#39;watch&#39;</span>, <span style="color:#a31515"></span><span style="color:#a31515">&#39;day&#39;</span>, <span style="color:#a31515"></span><span style="color:#a31515">&#39;star&#39;</span>, <span style="color:#a31515"></span><span style="color:#a31515">&#39;wind&#39;</span>]
+target_words = [<span style="color:#a31515"></span><span style="color:#a31515">&#39;day&#39;</span>, <span style="color:#a31515"></span><span style="color:#a31515">&#39;cap&#39;</span>]
+<span style="color:#00f">for</span> word <span style="color:#00f">in</span> target_words:
+    <span style="color:#00f">print</span>(model.most_similar_to_given(word, theirs))</code></pre></div>
+<pre><code>dog
+cotton
+</code></pre>
+
+      
+
+    </main>
+  </div>
+  <div class="pure-u-1-24 pure-u-lg-1-12 pure-u-xl-1-5"></div>
+</div>
+<div class="pure-g" id="foot">
+  <div class="pure-u-1">
+    
+      <a href="https://github.com/newtux">GitHub</a>
+    
+    
+      
+
+
+    
+  </div>
+</div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/timeago.js/2.0.4/timeago.min.js" integrity="sha256-34otvl+f6DWlliQUlAwT5hvizEJc8lPlNpW9T23pfGA=" crossorigin="anonymous"></script>
+<script type="text/javascript">
+  new timeago().render(document.querySelectorAll('.timeago'));
+</script>
+
+</body>
+</html>

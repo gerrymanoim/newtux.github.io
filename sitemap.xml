@@ -8,6 +8,11 @@
   </url>
   
   <url>
+    <loc>http://newtux.github.io/posts/codenames-part-1/</loc>
+    <lastmod>2018-01-22T21:29:54-05:00</lastmod>
+  </url>
+  
+  <url>
     <loc>http://newtux.github.io/categories/</loc>
     <priority>0</priority>
   </url>
@@ -21,6 +26,12 @@
   <url>
     <loc>http://newtux.github.io/posts/</loc>
     <lastmod>2018-02-25T14:35:56-05:00</lastmod>
+    <priority>0</priority>
+  </url>
+  
+  <url>
+    <loc>http://newtux.github.io/categories/rough-edges/</loc>
+    <lastmod>2018-01-22T21:29:54-05:00</lastmod>
     <priority>0</priority>
   </url>
   

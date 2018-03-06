@@ -21,5 +21,16 @@
 Questions: Which brewery produces the strongest beers by ABV%? If you had to pick 3 beers to recommend using only this data, which would you pick? Which of the factors (aroma, taste, appearance, palette) are most important in determining the overall quality of a beer? Lastly, if I typically enjoy a beer due to its aroma and appearance, which beer style should I try?</description>
     </item>
     
+    <item>
+      <title>Experimenting with WordVectors and Codenames</title>
+      <link>http://newtux.github.io/posts/codenames-part-1/</link>
+      <pubDate>Mon, 22 Jan 2018 21:29:54 -0500</pubDate>
+      
+      <guid>http://newtux.github.io/posts/codenames-part-1/</guid>
+      <description>I&amp;rsquo;ve been playing a lot of Codenames and came across https://jamesmullenbach.github.io/2018/01/02/codenames-fun.html which explored using word2vec to generate clue words. This was really cool! I started wondering if we could use a similar approach to actually play as a spymaster, i.e. answering the question:
+Given a game board and a side, what should my clue word + targeted number be?
+This post is a collection of some things I tried and the results.</description>
+    </item>
+    
   </channel>
 </rss>
