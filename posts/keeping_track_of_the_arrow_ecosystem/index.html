@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+    <title>Keeping Track of The Arrow Ecosystem</title>
+    <link rel="stylesheet" href="https://unpkg.com/purecss@0.6.2/build/pure-min.css" integrity="sha384-UQiGfs9ICog+LwheBSRCt1o5cbyKIHbwjWscjemyBMT9YCUMZffs6UqUTd0hObXD" crossorigin="anonymous">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    
+    
+    <meta name="generator" content="Hugo 0.33" />
+    
+    
+    
+      <link rel="stylesheet" href="https://unpkg.com/purecss@0.6.2/build/grids-responsive-min.css">
+    
+    
+    <link rel="stylesheet" href="http://newtux.github.io/css/plain-blog.css">
+</head>
+<body>
+<div class="pure-g">
+  <div class="pure-u-1" id="header">
+    <a href="http://newtux.github.io/">Off-Hours</a>
+    
+    
+      <a href="/about/">About</a>
+    
+  </div>
+</div>
+<div class="pure-g">
+  <div class="pure-u-1-24 pure-u-lg-1-12 pure-u-xl-1-5"></div>
+  <div class="pure-u-11-12 pure-u-lg-5-6 pure-u-xl-3-5" id="main">
+  	<main>
+  	  <header>
+  	    <h1>Keeping Track of The Arrow Ecosystem</h1>
+        <time datetime="2018-03-13T20:12:54-05:00" class="post-list timeago">2018-03-13</time>
+        
+
+
+
+
+
+
+
+  	  </header>
+
+  	  
+
+
+      
+
+  	  
+        <p>The <a href="http://arrow.apache.org/">Arrow</a> ecosystem keeps growing and getting better (which is exciting) but I can never really remember which part is supposed to do what.</p>
+
+<p>I&rsquo;m terribly sorry for a lot of over simplification here.</p>
+
+<p></p>
+
+<p><strong>Last Updated: 2018-03-13</strong></p>
+
+<h1 id="projects">Projects</h1>
+
+<h2 id="apache-arrow">Apache Arrow</h2>
+
+<blockquote>
+<p>Apache Arrow is a cross-language development platform for <strong>in-memory data</strong>. It specifies a standardized language-independent columnar memory format for flat and hierarchical data, organized for efficient analytic operations on modern hardware. It also provides computational libraries and zero-copy streaming messaging and interprocess communication. Languages currently supported include C, C++, Java, JavaScript, Python, and Ruby.</p>
+</blockquote>
+
+<h3 id="see-also">See Also</h3>
+
+<ul>
+<li><a href="http://arrow.apache.org/">Main Site</a></li>
+</ul>
+
+<h2 id="apache-parquet">Apache Parquet</h2>
+
+<blockquote>
+<p>Apache Parquet is a columnar storage format available to any project in the Hadoop ecosystem, regardless of the choice of data processing framework, data model or programming language.</p>
+</blockquote>
+
+<p>Like Arrow, but on disk.</p>
+
+<h3 id="see-also-1">See Also</h3>
+
+<ul>
+<li><a href="https://parquet.apache.org/">Main Site</a></li>
+<li><a href="https://www.kdnuggets.com/2017/02/apache-arrow-parquet-columnar-data.html">Apache Arrow and Apache Parquet: Why We Needed Different Projects for Columnar Data, On Disk and In-Memory</a></li>
+<li><a href="http://wesmckinney.com/blog/arrow-columnar-abadi/">Some comments to Daniel Abadi&rsquo;s blog about Apache Arrow</a></li>
+</ul>
+
+<h2 id="plasma">Plasma</h2>
+
+<blockquote>
+<p>..An in-memory object store that is being developed as part of Apache Arrow. Plasma holds immutable objects in shared memory so that they can be accessed efficiently by many clients across process boundaries.</p>
+</blockquote>
+
+<p>Like arrow, but shared between things.</p>
+
+<h3 id="see-also-2">See Also</h3>
+
+<ul>
+<li><a href="https://arrow.apache.org/blog/2017/08/08/plasma-in-memory-object-store/">Introductory Post</a></li>
+<li><a href="https://arrow.apache.org/docs/python/plasma.html">Documentation</a></li>
+</ul>
+
+<h2 id="ray">Ray</h2>
+
+<blockquote>
+<p>Ray is a flexible, high-performance distributed execution framework.
+Ray, a framework for efficiently running Python code on clusters and large multi-core machines.</p>
+</blockquote>
+
+<h3 id="see-also-3">See Also</h3>
+
+<ul>
+<li><a href="https://ray-project.github.io/2017/05/20/announcing-ray.html">Introductory Post</a></li>
+</ul>
+
+<h1 id="packages">Packages</h1>
+
+<h2 id="pyarrow">Pyarrow</h2>
+
+<blockquote>
+<p>the Python API of Apache Arrow</p>
+</blockquote>
+
+<p>Use Arrow in Python. Read Parquet files.</p>
+
+<h3 id="see-also-4">See Also</h3>
+
+<ul>
+<li><a href="https://arrow.apache.org/docs/python/">Documentation</a></li>
+</ul>
+
+<h2 id="feather-r-package">Feather (R Package)</h2>
+
+<p>From the package notes:</p>
+
+<blockquote>
+<p>Feather is a fast, lightweight, and easy-to-use binary file format for storing data frames. It has a few specific design goals:</p>
+</blockquote>
+
+<p>From Wes&rsquo; update (see below):</p>
+
+<blockquote>
+<p>Since it seemed likely that the broader build out of the Arrow project would take some time, we decided to create a minimalistic implementation of Arrow with just enough file metadata to support the major Python and R data types. We released this as the Feather project. The implementation was overall incredibly simple and has been very useful to data scientists that use both Python and R.</p>
+</blockquote>
+
+<p>As above, feather is a minimalistic implementation of Arrow itself. This minimalistic implementation can be used by R using the feather package. Feather (the format) has been fully integrated into pyarrow. The work that needs to be done is in creating R C++ bindings to Arrow, so then those bindings can be used to improve the R package (unsure if this is in feather or not) to have the full array of Arrow functionality.</p>
+
+<p>This is all my interpretation of the status.</p>
+
+<h3 id="see-also-5">See Also</h3>
+
+<ul>
+<li><a href="https://blog.rstudio.com/2016/03/29/feather/">Initial Announcement</a></li>
+<li><a href="http://wesmckinney.com/blog/feather-arrow-future/">Feather Format Update</a></li>
+</ul>
+
+<h1 id="other-tools">Other tools:</h1>
+
+<ul>
+<li><a href="https://www.dremio.com/">Dremio</a></li>
+<li>[turbodbc]()</li>
+</ul>
+      
+
+    </main>
+  </div>
+  <div class="pure-u-1-24 pure-u-lg-1-12 pure-u-xl-1-5"></div>
+</div>
+<div class="pure-g" id="foot">
+  <div class="pure-u-1">
+    
+      <a href="https://github.com/newtux">GitHub</a>
+    
+    
+      
+
+
+    
+  </div>
+</div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/timeago.js/2.0.4/timeago.min.js" integrity="sha256-34otvl+f6DWlliQUlAwT5hvizEJc8lPlNpW9T23pfGA=" crossorigin="anonymous"></script>
+<script type="text/javascript">
+  new timeago().render(document.querySelectorAll('.timeago'));
+</script>
+
+</body>
+</html>

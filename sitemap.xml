@@ -3,6 +3,11 @@
   xmlns:xhtml="http://www.w3.org/1999/xhtml">
   
   <url>
+    <loc>http://newtux.github.io/posts/keeping_track_of_the_arrow_ecosystem/</loc>
+    <lastmod>2018-03-13T20:12:54-05:00</lastmod>
+  </url>
+  
+  <url>
     <loc>http://newtux.github.io/posts/beer_reviews/</loc>
     <lastmod>2018-02-25T14:35:56-05:00</lastmod>
   </url>
@@ -24,7 +29,7 @@
   
   <url>
     <loc>http://newtux.github.io/posts/</loc>
-    <lastmod>2018-02-25T14:35:56-05:00</lastmod>
+    <lastmod>2018-03-13T20:12:54-05:00</lastmod>
     <priority>0</priority>
   </url>
   
